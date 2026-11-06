@@ -2301,15 +2301,15 @@ json
 
 **3. 필드별로 알아둘 점**
 
-|필드|알아둘 점|
-|---|---|
-|`userIdentity.type`|`Root`(루트), `IAMUser`(IAM 사용자), `AssumedRole`(역할 세션), `AWSService`(AWS 서비스가 대신 요청) 등이 있어요. `Root`면 그 자체로 조사 대상이에요|
-|`userIdentity.arn`|역할 세션이면 `assumed-role/역할이름/세션이름` 모양이에요. SSO로 들어온 경우 세션 이름에 보통 사람 이름이나 이메일이 들어가서, 세션 2에서 말한 **출발점**을 찾는 단서가 돼요|
-|`sourceIPAddress`|요청을 보낸 IP예요. AWS 서비스가 대신 요청하면 IP 대신 서비스 이름이 찍히기도 해요|
-|`userAgent`|요청한 도구예요. 요청하는 쪽이 마음대로 바꿀 수 있어서 **참고용**이에요. 평소와 달라졌다는 사실이 단서가 돼요|
-|`errorCode`|실패 이유예요. `AccessDenied`(권한 없음)가 짧은 시간에 여러 번 나오면, 누군가 훔친 자격증명으로 **무엇을 할 수 있는지 하나씩 찔러보는** 모습일 수 있어요|
-|`responseElements`|요청 결과예요. 예를 들어 새 키를 만들면 만들어진 키 ID가 여기 남아요. 비밀 키 값은 기록되지 않아요|
-|`awsRegion`|IAM처럼 전 세계 공통인 서비스는 요청을 어디서 보냈든 `us-east-1`로 찍혀요. 리전만 보고 이상하다고 판단하면 안 돼요|
+| 필드                  | 알아둘 점                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `userIdentity.type` | `Root`(루트), `IAMUser`(IAM 사용자), `AssumedRole`(역할 세션), `AWSService`(AWS 서비스가 대신 요청) 등이 있어요. `Root`면 그 자체로 조사 대상이에요 |
+| `userIdentity.arn`  | 역할 세션이면 `assumed-role/역할이름/세션이름` 모양이에요. SSO로 들어온 경우 세션 이름에 보통 사람 이름이나 이메일이 들어가서, 세션 2에서 말한 **출발점**을 찾는 단서가 돼요     |
+| `sourceIPAddress`   | 요청을 보낸 IP예요. AWS 서비스가 대신 요청하면 IP 대신 서비스 이름이 찍히기도 해요                                                               |
+| `userAgent`         | 요청한 도구예요. 요청하는 쪽이 마음대로 바꿀 수 있어서 **참고용**이에요. 평소와 달라졌다는 사실이 단서가 돼요                                                  |
+| `errorCode`         | 실패 이유예요. `AccessDenied`(권한 없음)가 짧은 시간에 여러 번 나오면, 누군가 훔친 자격증명으로 **무엇을 할 수 있는지 하나씩 찔러보는** 모습일 수 있어요                 |
+| `responseElements`  | 요청 결과예요. 예를 들어 새 키를 만들면 만들어진 키 ID가 여기 남아요. 비밀 키 값은 기록되지 않아요                                                       |
+| `awsRegion`         | IAM처럼 전 세계 공통인 서비스는 요청을 어디서 보냈든 `us-east-1`로 찍혀요. 리전만 보고 이상하다고 판단하면 안 돼요                                          |
 
 > 세션 3 한 줄 정리: CloudTrail 이벤트는 누가(`userIdentity`), 무엇을(`eventSource`·`eventName`·`requestParameters`), 어디서(`sourceIPAddress`·`userAgent`), 언제(`eventTime`), 결과(`errorCode`·`responseElements`)의 다섯 질문으로 읽는다.
 
