@@ -3070,12 +3070,15 @@ CloudTrail은 기록하는 이벤트를 두 종류로 나눠요.
 > **3. 데이터와 범위**
 > 
 > - 기간: 지난 7일간
-> - 대상: 전체 고객 계정
-> - 로그: 로그인 로그, 주문·계정 변경 로그
+> - 대상: 아이덴티티 6개 계정
+> - 로그: CloudTrail 로그, GuardDuty 로그
 > 
 > **4. 분석 방법**
 > 
-> - 조건: 로그인 로그 `result=success`, `device=new` + 같은 `user`의 주문·계정 변경 로그에서 `action=change_address`, `addr_used_before=no` 다음에 `action=order`, `category=전자기기`, `amount`≥500000이 로그인 후 1시간 안에 이내
+> - 조건: CloudTrail 로그에서 다음 내용 확인
+>   svc-backup 이벤트가 평소 사용하지 않는 리전(awsRegion=us-east-1)에서 p4d.24xlarge 인스턴스를 만들고, 실행한 것을 확인
+>   oncall-ops 
+>   
 > - 쿼리 원문 첨부
 > 
 > **5. 결과**
