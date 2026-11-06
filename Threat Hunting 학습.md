@@ -2915,7 +2915,7 @@ VPC 흐름 기록    →  그 서버가 실제로 외부와 통신했나        
    svc-deploy (IAM 사용자) : 정상 / 데이터 A의 지난 30일 비교에서 다른 점이 없었고, 데이터의 B 값에 눈에 띄는 아이덴티티 이벤트가 없었음.
    kim.ys@corp (역할 Developer) - 조사 대상 / 데이터 A와 데이터 B를 보면 새벽 활동이 있어서 조사가 필요한 부분이 있음. 단, 가상 머신의 상세 정보를 조회하는 API(DescribeInstances)를 사용한 것이고, 한국 지사 공인 IP(sourceIPAddress)에서 aws-cli/2.15.0(userAgent)를 사용했기 때문에 정상으로 판단됨.
    svc-backup (IAM 사용자) : 조사 대상 / 데이터 A에서 처음 사용하는 리전에서 접근 기록이 있고, oncall-ops 아이덴티티가 requestParameters로 svc-backup로 policyArn 요청한 기록이 있음.
-   oncall-ops (역할 OpsAdmin) : 침해 의심 / 데이터 A에서 한국 지사 공인 IP는 `203.0.113.10`, 미국 지사는 `198.51.100.5` 이 외에 주로 쓴 IP가 다르고, 역할을 해당 IP가 쓴적 없음을 기준으로 데이터 B를 보면, oncall-ops로 Initialze Access하여, Lateral Movement
+   oncall-ops (역할 OpsAdmin) : 침해 의심 / 데이터 A에서 한국 지사 공인 IP는 `203.0.113.10`, 미국 지사는 `198.51.100.5` 이 외에 주로 쓴 IP가 다르고, 역할을 해당 IP가 쓴적 없음을 기준으로 데이터 B를 보면, oncall-ops로 Initial Access하여, 사용자 목록을 조회하고, svc-backup의 Policy에 접근하여 버킷
    
    22:41:05 : 현재 사용하고 있는 AWS 자격 증명(IAM 사용자 또는 역할)의 상세 정보를 확인(GetCallerIdentity)
    22:43:12 : 사용자 목록을 조회
