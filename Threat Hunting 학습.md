@@ -2452,3 +2452,139 @@ requestParameters.userName = backup-admin ← 대상 (누구에게)
 - 애초에 배포 봇에 다른 사용자의 키를 만들 권한이 왜 있었는지 (권한이 너무 넓었던 설정 문제)
 
 > 세션 3 마무리: CloudTrail에서는 `userIdentity`(요청한 쪽)와 `requestParameters`(대상)를 반드시 나눠 읽는다. 키가 새로 만들어졌다면 첫 조치는 그 키의 비활성화다.
+
+
+# **세션 4: 실습 (변경한 사람 찾기)**
+
+**상황**: 운영용 AWS 계정에서 설정 점검 알림이 왔어요. "웹 서버의 보안 그룹에 **인터넷 전체로 열린 규칙**이 추가됐다." 헌터에게 누가 왜 바꿨는지, 침해인지 확인해 달라는 요청이 들어왔어요.
+
+**배경**
+
+- **보안 그룹**은 서버 앞에 두는 방화벽 규칙이에요. 어떤 IP가 어느 포트로 들어올 수 있는지 정해요.
+- **22번 포트**는 SSH, 서버에 원격으로 접속하는 통로예요.
+- **`0.0.0.0/0`**은 인터넷의 모든 IP를 뜻해요.
+- 직원은 회사 SSO로 로그인해서 `Developer` 역할을 받고, 운영 변경이 필요할 때 `OpsAdmin` 역할로 갈아타요.
+- `AssumeRoleWithSAML`은 SSO 로그인 뒤 AWS 역할을 받는 API예요.
+- `userAgent`가 `Mozilla/5.0 …` 같은 브라우저 정보면 웹 콘솔 화면에서 한 요청이에요.
+- 읽기 쉽게 필요한 필드만 남기고 구조를 조금 단순화했어요.
+
+**데이터**
+
+json
+
+```json
+E1
+{
+  "eventTime": "2026-11-05T05:02:11Z",
+  "eventSource": "sts.amazonaws.com",
+  "eventName": "AssumeRoleWithSAML",
+  "sourceIPAddress": "203.0.113.10",
+  "userIdentity": { "type": "SAMLUser", "userName": "park.jh@corp.example" },
+  "requestParameters": { "roleArn": "arn:aws:iam::111122223333:role/Developer" },
+  "responseElements": { "credentials": { "accessKeyId": "ASIAEXAMPLEA001" } }
+}
+```
+
+json
+
+```json
+E2
+{
+  "eventTime": "2026-11-05T05:10:40Z",
+  "eventSource": "sts.amazonaws.com",
+  "eventName": "AssumeRole",
+  "sourceIPAddress": "203.0.113.10",
+  "userIdentity": {
+    "type": "AssumedRole",
+    "arn": "arn:aws:sts::111122223333:assumed-role/Developer/park.jh@corp.example",
+    "accessKeyId": "ASIAEXAMPLEA001"
+  },
+  "requestParameters": {
+    "roleArn": "arn:aws:iam::111122223333:role/OpsAdmin",
+    "roleSessionName": "park.jh"
+  },
+  "responseElements": { "credentials": { "accessKeyId": "ASIAEXAMPLEB002" } }
+}
+```
+
+json
+
+```json
+E3
+{
+  "eventTime": "2026-11-05T05:14:03Z",
+  "eventSource": "ec2.amazonaws.com",
+  "eventName": "AuthorizeSecurityGroupIngress",
+  "awsRegion": "ap-northeast-2",
+  "sourceIPAddress": "203.0.113.10",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+  "userIdentity": {
+    "type": "AssumedRole",
+    "arn": "arn:aws:sts::111122223333:assumed-role/OpsAdmin/park.jh",
+    "accessKeyId": "ASIAEXAMPLEB002"
+  },
+  "requestParameters": {
+    "groupId": "sg-0a1b2c3d",
+    "ipPermissions": { "fromPort": 22, "toPort": 22, "cidrIp": "0.0.0.0/0" }
+  }
+}
+```
+
+json
+
+```json
+E4
+{
+  "eventTime": "2026-11-05T05:15:00Z",
+  "eventSource": "sts.amazonaws.com",
+  "eventName": "AssumeRole",
+  "sourceIPAddress": "ec2.amazonaws.com",
+  "userIdentity": { "type": "AWSService", "invokedBy": "ec2.amazonaws.com" },
+  "requestParameters": { "roleArn": "arn:aws:iam::111122223333:role/web-server-role" }
+}
+```
+
+json
+
+```json
+E5
+{
+  "eventTime": "2026-11-05T05:20:31Z",
+  "eventSource": "ec2.amazonaws.com",
+  "eventName": "DescribeSecurityGroups",
+  "readOnly": true,
+  "sourceIPAddress": "203.0.113.10",
+  "userIdentity": {
+    "type": "AssumedRole",
+    "arn": "arn:aws:sts::111122223333:assumed-role/Developer/kim.ys@corp.example",
+    "accessKeyId": "ASIAEXAMPLEC003"
+  }
+}
+```
+
+**알려진 것**
+
+- 회사 사무실의 공인 IP는 203.0.113.10이에요.
+- 웹 서버는 보안 그룹 `sg-0a1b2c3d`를 써요.
+- 회사 변경 관리 시스템에 `park.jh`가 11/5에 올려서 승인받은 작업이 있어요: "웹 서버 점검을 위해 **사무실 IP(203.0.113.10)에서만** SSH 임시 허용, 당일 원복"
+- `web-server-role`은 웹 서버에 붙어 있는 역할이에요.
+
+**모르는 것**: `park.jh`가 이 규칙을 실제로 의도해서 만들었는지.
+
+---
+
+**과제**
+
+1. **E3 정리**: E3을 **누가, 무엇을, 대상(무엇에 대해), 어디서, 언제(한국 시간), 결과**의 여섯 칸으로 정리해 주세요. 세션 3에서 배운 요청한 쪽과 대상의 구분에 주의하세요
+
+| 질문      | 필드                                              | 이 예시에서                                                                                                                                                 |
+| ------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **누가**  | `userIdentity`                                  | `type`이 `AssumedRole`이라 역할을 맡은 세션. `arn` 끝을 보면 역할 `Developer`를 `dev-lee@corp.example`이 맡았음. 키는 `ASIA`라 임시 자격증명, `mfaAuthenticated`가 `true`라 2단계 인증을 거침 |
+| **무엇을** | `eventSource`, `eventName`, `requestParameters` | S3 서비스의 `ListBuckets`(저장소 목록 조회). 요청 내용은 없음                                                                                                            |
+| **어디서** | `sourceIPAddress`, `userAgent`, `awsRegion`     | 회사 IP 203.0.113.10에서 명령줄 도구(`aws-cli`)로, 서울 리전(`ap-northeast-2`)에 요청                                                                                   |
+| **언제**  | `eventTime`                                     | UTC 05:14:03, 한국 시간 14:14:03                                                                                                                           |
+| **결과**  | `errorCode`                                     | `errorCode`가 없으니 성공                                                                                                                                    |
+   
+2. **출발점 찾기**: E3의 세션이 실제로 **어느 사람**에게서 시작됐는지 거슬러 올라가 보세요. 이벤트끼리 **어떤 필드의 어떤 값**으로 이어지는지 써주세요.
+3. **관계없는 이벤트 가리기**: E4와 E5는 이번 조사와 어떤 관계인가요? 각각 어느 필드를 보고 판단했는지 써주세요.
+4. **판정과 조치**: 이 건을 **침해 의심, 설정 오류, 정상** 중 무엇으로 판정할지 근거와 함께 써주세요. 그리고 대응을 위해 **가장 먼저** 요청할 조치는 무엇일까요?
