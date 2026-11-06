@@ -2227,3 +2227,136 @@ AWS에서 "누가"에 해당하는 것들을 하나씩 볼게요.
        3번 임시 엑세스 키를 사용하기 때문에 세 번째 우선 순위
 		
 		4번 매일 아침 같은 방식으로 로그인 하기 때문에 우선 순위 낮음 
+		
+**채점: 1번 정답, 2번 순서는 정답·3번 활동의 근거 보완**
+
+**1번 판단 근거**
+
+정답이에요. 앞 네 글자 말고도 표 안에 단서가 하나 더 있어요. 2번에는 “(IAM 사용자 `deploy-bot`)”, 3번에는 “(역할 `web-server-role`의 세션)”이라고 적혀 있어서, 세션 2의 표대로 IAM 사용자는 장기 키, 역할 세션은 임시 자격증명이에요.
+
+하나만 덧붙이면 임시 자격증명도 안전한 건 아니에요. 만료되기 전까지는 그대로 쓸 수 있고, 공격자가 그사이에 **새 장기 키를 만들어 두면** 임시 접근이 장기 접근으로 바뀌어요. 그래서 세션 2 표에서 `CreateAccessKey`를 특히 본다고 한 거예요.
+
+**2번 판단 근거**
+
+순서는 정답이에요.
+
+|순위|활동|평가|
+|---|---|---|
+|1|루트 로그인|정확해요. "쓰지 않는다는 정책"과 “1년 사용 0회”, 그리고 영향이 계정 전체라는 점까지 짚었어요|
+|2|deploy-bot 키 사용|맞아요. 가장 강한 근거인 **”8개월 동안 사용 기록 없음"**을 같이 쓰면 더 좋아요. 오래 잠자던 키가 갑자기 깨어난 건 베이스라인에서 크게 벗어난 거예요. 배포 방식이 바뀌었으니 이 키를 쓸 정당한 이유도 없고요|
+|3|web-server-role 세션|순위는 맞지만 근거가 달라요. 아래 설명|
+|4|dev-lee 로그인|정확해요|
+
+3번이 낮은 이유는 **임시 키라서가 아니라 평소 패턴과 일치하기 때문**이에요. 알려진 것에 "웹 서버에 붙은 역할이 매시간 S3에서 설정 파일을 읽는다"고 나와 있고, 활동도 그대로예요. 임시 키도 탈취될 수 있어서, 이런 경우라면 조사 대상이 돼요.
+
+- 같은 임시 키가 웹 서버가 아닌 **외부 IP**에서 쓰임 (서버의 임시 자격증명을 빼간 경우)
+- 설정 파일이 아닌 **다른 파일**을 읽음
+- 매시간이 아니라 **짧은 시간에 몰려서** 요청함
+
+그리고 마무리 단계에 넣을 개선 제안도 하나 나와요. 8개월 동안 안 쓴 키는 **애초에 지웠어야** 해요. 리포트에 "쓰지 않는 장기 키 정리"를 제안으로 남기면 같은 위험이 다시 생기지 않아요.
+
+
+# **세션 3: CloudTrail 로그 읽는 법**
+
+**1. 이벤트 하나는 이렇게 생겼어요**
+
+CloudTrail은 API 요청 하나를 JSON 형식 한 덩어리로 기록해요. 개발자 `dev-lee`가 SSO로 맡은 역할로 저장소 목록을 조회한 정상 이벤트 예시예요.
+
+json
+
+```json
+{
+  "eventTime": "2026-11-05T01:15:30Z",
+  "eventSource": "s3.amazonaws.com",
+  "eventName": "ListBuckets",
+  "awsRegion": "ap-northeast-2",
+  "sourceIPAddress": "203.0.113.10",
+  "userAgent": "aws-cli/2.15.0",
+  "userIdentity": {
+    "type": "AssumedRole",
+    "arn": "arn:aws:sts::111122223333:assumed-role/Developer/dev-lee@corp.example",
+    "accountId": "111122223333",
+    "accessKeyId": "ASIAEXAMPLE4R8T",
+    "sessionContext": {
+      "sessionIssuer": { "type": "Role", "userName": "Developer" },
+      "attributes": { "creationDate": "2026-11-05T00:58:02Z", "mfaAuthenticated": "true" }
+    }
+  },
+  "requestParameters": null,
+  "responseElements": null,
+  "eventType": "AwsApiCall",
+  "recipientAccountId": "111122223333"
+}
+```
+
+**2. 필드를 다섯 가지 질문으로 묶어 읽기**
+
+| 질문      | 필드                                              | 이 예시에서                                                                                                                                                 |
+| ------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **누가**  | `userIdentity`                                  | `type`이 `AssumedRole`이라 역할을 맡은 세션. `arn` 끝을 보면 역할 `Developer`를 `dev-lee@corp.example`이 맡았음. 키는 `ASIA`라 임시 자격증명, `mfaAuthenticated`가 `true`라 2단계 인증을 거침 |
+| **무엇을** | `eventSource`, `eventName`, `requestParameters` | S3 서비스의 `ListBuckets`(저장소 목록 조회). 요청 내용은 없음                                                                                                            |
+| **어디서** | `sourceIPAddress`, `userAgent`, `awsRegion`     | 회사 IP 203.0.113.10에서 명령줄 도구(`aws-cli`)로, 서울 리전(`ap-northeast-2`)에 요청                                                                                   |
+| **언제**  | `eventTime`                                     | UTC 01:15:30, 한국 시간 10:15:30                                                                                                                           |
+| **결과**  | `errorCode`, `responseElements`                 | `errorCode`가 없으니 성공                                                                                                                                    |
+
+**3. 필드별로 알아둘 점**
+
+|필드|알아둘 점|
+|---|---|
+|`userIdentity.type`|`Root`(루트), `IAMUser`(IAM 사용자), `AssumedRole`(역할 세션), `AWSService`(AWS 서비스가 대신 요청) 등이 있어요. `Root`면 그 자체로 조사 대상이에요|
+|`userIdentity.arn`|역할 세션이면 `assumed-role/역할이름/세션이름` 모양이에요. SSO로 들어온 경우 세션 이름에 보통 사람 이름이나 이메일이 들어가서, 세션 2에서 말한 **출발점**을 찾는 단서가 돼요|
+|`sourceIPAddress`|요청을 보낸 IP예요. AWS 서비스가 대신 요청하면 IP 대신 서비스 이름이 찍히기도 해요|
+|`userAgent`|요청한 도구예요. 요청하는 쪽이 마음대로 바꿀 수 있어서 **참고용**이에요. 평소와 달라졌다는 사실이 단서가 돼요|
+|`errorCode`|실패 이유예요. `AccessDenied`(권한 없음)가 짧은 시간에 여러 번 나오면, 누군가 훔친 자격증명으로 **무엇을 할 수 있는지 하나씩 찔러보는** 모습일 수 있어요|
+|`responseElements`|요청 결과예요. 예를 들어 새 키를 만들면 만들어진 키 ID가 여기 남아요. 비밀 키 값은 기록되지 않아요|
+|`awsRegion`|IAM처럼 전 세계 공통인 서비스는 요청을 어디서 보냈든 `us-east-1`로 찍혀요. 리전만 보고 이상하다고 판단하면 안 돼요|
+
+> 세션 3 한 줄 정리: CloudTrail 이벤트는 누가(`userIdentity`), 무엇을(`eventSource`·`eventName`·`requestParameters`), 어디서(`sourceIPAddress`·`userAgent`), 언제(`eventTime`), 결과(`errorCode`·`responseElements`)의 다섯 질문으로 읽는다.
+
+---
+
+**확인 질문**
+
+- **상황**: 세션 2 확인 질문의 2번 활동(`deploy-bot` 키 사용)을 CloudTrail에서 찾아봤어요. 그중 한 이벤트예요.
+- **데이터**
+
+json
+
+```json
+{
+  "eventTime": "2026-11-05T17:42:09Z",
+  "eventSource": "iam.amazonaws.com",
+  "eventName": "CreateAccessKey",
+  "awsRegion": "us-east-1",
+  "sourceIPAddress": "198.51.100.23",
+  "userAgent": "aws-cli/2.15.0 Python/3.11 Linux",
+  "userIdentity": {
+    "type": "IAMUser",
+    "arn": "arn:aws:iam::111122223333:user/deploy-bot",
+    "accountId": "111122223333",
+    "accessKeyId": "AKIAEXAMPLE7Q2X",
+    "userName": "deploy-bot"
+  },
+  "requestParameters": { "userName": "backup-admin" },
+  "responseElements": {
+    "accessKey": {
+      "accessKeyId": "AKIAEXAMPLENEW1",
+      "status": "Active",
+      "userName": "backup-admin"
+    }
+  },
+  "eventType": "AwsApiCall",
+  "recipientAccountId": "111122223333"
+}
+```
+
+- **알려진 것**
+    - 회사 배포 서버가 AWS에 요청할 때는 공인 IP 203.0.113.10으로 보여요.
+    - `deploy-bot`은 예전에 배포 프로그램(`Boto3`라는 파이썬 도구)으로만 요청을 보냈어요.
+    - `backup-admin`은 **관리자 권한**을 가진 IAM 사용자예요.
+    - IAM은 전 세계 공통 서비스라 리전이 항상 `us-east-1`로 찍혀요.
+- **모르는 것**: 198.51.100.23이 누구의 IP인지.
+- **질문**
+    1. 이 이벤트를 **누가, 무엇을, 어디서, 언제(한국 시간), 결과**의 다섯 가지로 정리해 주세요.
+    2. 평소와 다른 점을 세 가지 이상 찾고, 각각 어느 필드를 보고 판단했는지 써주세요.
+    3. `requestParameters`의 `userName`에 주목해 보세요. 이 이벤트가 특히 위험한 이유는 무엇이고, 대응팀에 넘길 때 **가장 먼저** 요청해야 할 조치는 무엇일까요?
