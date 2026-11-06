@@ -2915,10 +2915,13 @@ VPC 흐름 기록    →  그 서버가 실제로 외부와 통신했나        
    svc-deploy (IAM 사용자) : 정상 / 데이터 A의 지난 30일 비교에서 다른 점이 없었고, 데이터의 B 값에 눈에 띄는 아이덴티티 이벤트가 없었음.
    kim.ys@corp (역할 Developer) - 조사 대상 / 데이터 A와 데이터 B를 보면 새벽 활동이 있어서 조사가 필요한 부분이 있음. 단, 가상 머신의 상세 정보를 조회하는 API(DescribeInstances)를 사용한 것이고, 한국 지사 공인 IP(sourceIPAddress)에서 aws-cli/2.15.0(userAgent)를 사용했기 때문에 정상으로 판단됨.
    svc-backup (IAM 사용자) : 조사 대상 / 데이터 A에서 처음 사용하는 리전에서 접근 기록이 있고, oncall-ops 아이덴티티가 requestParameters로 svc-backup로 policyArn 요청한 기록이 있음.
-   oncall-ops (역할 OpsAdmin) : 데이터 A에서 한국 지사 공인 IP는 `203.0.113.10`, 미국 지사는 `198.51.100.5` 이 외에 주로 쓴 IP가 다르고, 역할을 해당 IP가 쓴적 없음을 기준으로 데이터 B를 보면, 
+   oncall-ops (역할 OpsAdmin) : 침해 의심 / 데이터 A에서 한국 지사 공인 IP는 `203.0.113.10`, 미국 지사는 `198.51.100.5` 이 외에 주로 쓴 IP가 다르고, 역할을 해당 IP가 쓴적 없음을 기준으로 데이터 B를 보면, oncall-ops로 Initialze Access하여, Lateral Movement
+   
    22:41:05 : 현재 사용하고 있는 AWS 자격 증명(IAM 사용자 또는 역할)의 상세 정보를 확인(GetCallerIdentity)
    22:43:12 : 사용자 목록을 조회
-   22:45:30 : 
+   22:45:30 : 지정된 IAM(Identity and Access Management) 사용자를 위한 새로운 AWS 액세스 키 ID와 비밀 액세스 키를 생성
+   22:47:50 : AWS IAM(Identity and Access Management)에서 특정 IAM 사용자(User)에게 독립적으로 관리되는 '관리형 정책(Managed Policy)'을 연결
+   22:49:02 : 접근 권한(JSON 형태의 버킷 정책)을 설정하거나 덮어쓰기 작업 (실패)
    
 3. **깃발 찾기**: 침해 의심 중 가장 심각한 것 하나를 골라, 그 아이덴티티의 이벤트를 **한국 시간 타임라인**으로 정리하고 각 단계가 무슨 의도인지 해석해 주세요.
    
