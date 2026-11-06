@@ -2363,8 +2363,13 @@ json
 | ------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
 | **누가**  | `userIdentity`                                  | `type`이 `IAMUser`이라 IAM 사용자. `arn` 끝을 보면 `user`가 deploy-bot을 맡았음. 키는 `AKIA`라 장기 자격증명 |
 | **무엇을** | `eventSource`, `eventName`, `requestParameters` | 관리자 권한을 가진 IAM 사용자가 CreateAccessKey API를 호출함.                                        |
-| **어디서** | `sourceIPAddress`, `userAgent`, `awsRegion`     | IP 198.51.100.23에서 명령줄 도구(`aws-cli`)로 python을 호출하고 있음, 서울 리전(`us-east-1`)에 요청        |
+| **어디서** | `sourceIPAddress`, `userAgent`, `awsRegion`     | IP 198.51.100.23에서 명령줄 도구(`aws-cli`)로 python을 호출하고 있음, 리전(`us-east-1`)에 요청           |
 | **언제**  | `eventTime`                                     | UTC 17:42:09, 한국 시간 02:42:09                                                         |
 | **결과**  | `errorCode`                                     | `errorCode`가 없으니 성공                                                                  |
     1. 평소와 다른 점을 세 가지 이상 찾고, 각각 어느 필드를 보고 판단했는지 써주세요.
+       - 회사 배포 서버가 AWS에 요청할 때, 공인 IP 203.0.113.10에서 보내는데, 198.51.100.23를 호출한 것으로 확인됨.
+       - 예전에는 `Boto3`라는 파이썬 도구를 사용했지만, 이번 요청에서는 `userAgent`로 `aws-cli`를 사용했음.
+       - 
+       
+       
     2. `requestParameters`의 `userName`에 주목해 보세요. 이 이벤트가 특히 위험한 이유는 무엇이고, 대응팀에 넘길 때 **가장 먼저** 요청해야 할 조치는 무엇일까요?
