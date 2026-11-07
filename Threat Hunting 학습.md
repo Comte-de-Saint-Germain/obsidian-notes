@@ -3444,7 +3444,6 @@ JD의 "행위 기반 기준선, 통계적 방법론"을 손으로 재현하는 �
 | 3   | 1.5h | 첫 실습: 데이터셋을 DataFrame으로 불러와 필드 구조 파악, EventID와 실행 파일 경로 스택 카운팅                   | 아래 코드                                                                                                                                                              |
 | 4   | 0.5h | 기법 정리 노트 작성 (기법별 언제 쓰는지, 어떻게, 한계)                                                |                                                                                                                                                                    |
 
-
 블록 3 시작용 코드입니다. 필드명은 데이터셋마다 다르니 `df.columns`부터 확인합니다.
 
 ```python
@@ -3476,13 +3475,13 @@ df.set_index("ts").resample("1min").size().sort_values(ascending=False).head(10)
 
 Threat Hunter Playbook은 헌트를 Jupyter 노트북 하나에 가설, 데이터, 쿼리, 검증까지 담는 방식입니다. Microsoft GHOST가 요구하는 Jupyter 기반 헌팅 자동화와 같은 결입니다.
 
-|   |   |   |   |
-|---|---|---|---|
-|블록|시간|내용|자료|
-|1|1.5h|Playbook 노트북 2개를 따라 실행하며 문서 구조 분석 (가설, 데이터, 분석, 검증 쿼리)|[Threat Hunter Playbook](https://github.com/OTRF/ThreatHunter-Playbook)|
-|2|1.5h|내 노트북 작성: "부모-자식 프로세스 조합 스택 카운팅으로 비정상 실행 찾기" (ABLE, 데이터, 쿼리, 결과, 탐지룰 아이디어)|Day 3 데이터셋|
-|3|0.5h|같은 분석을 SQL `GROUP BY ... ORDER BY count ASC`로 다시 쓰기 (Day 5 Athena 대비)||
-|4|0.5h|정리, Day 5 AWS 준비물 확인||
+| 블록  | 시간   | 내용                                                                         | 자료                                                                      |
+| --- | ---- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | 1.5h | Playbook 노트북 2개를 따라 실행하며 문서 구조 분석 (가설, 데이터, 분석, 검증 쿼리)                     | [Threat Hunter Playbook](https://github.com/OTRF/ThreatHunter-Playbook) |
+| 2   | 1.5h | 내 노트북 작성: "부모-자식 프로세스 조합 스택 카운팅으로 비정상 실행 찾기" (ABLE, 데이터, 쿼리, 결과, 탐지룰 아이디어) | Day 3 데이터셋                                                              |
+| 3   | 0.5h | 같은 분석을 SQL `GROUP BY ... ORDER BY count ASC`로 다시 쓰기 (Day 5 Athena 대비)      |                                                                         |
+| 3   | 0.5h | 같은 분석을 SQL `GROUP BY ... ORDER BY count ASC`로 다시 쓰기 (Day 5 Athena 대비)      |                                                                         |
+
 
 데이터셋을 쉽게 불러오고 싶으면 MSTICPy의 Mordor 데이터 브라우저를 써도 됩니다(선택).
 
@@ -3499,56 +3498,51 @@ Threat Hunter Playbook은 헌트를 Jupyter 노트북 하나에 가설, 데이�
 
 ### Day 5 · 11/3 (화) 아이덴티티 개념과 CloudTrail·Athena 구축
 
-|   |   |   |   |
-|---|---|---|---|
-|블록|시간|내용|자료|
-|1|1h|AWS 아이덴티티: IAM 사용자·역할·정책, STS AssumeRole 체인, 임시 자격증명, 연합 세션||
-|2|1h|CloudTrail 구조: 모든 API 호출 기록, userIdentity·eventName·sourceIPAddress·requestParameters 필드|[Wiz AWS Threat Hunting](https://wiz.io/academy/aws-threat-hunting)|
-|3|1.5h|실습 환경: 전용 계정에 CloudTrail 켜고 S3로 보내기, Athena 테이블 연결, 예산 알림 설정||
-|4|0.5h|엔드포인트 개념과의 대응표 작성 (아래)||
+| 블록  | 시간   | 내용                                                                                       | 자료                                                                  |
+| --- | ---- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| 1   | 1h   | AWS 아이덴티티: IAM 사용자·역할·정책, STS AssumeRole 체인, 임시 자격증명, 연합 세션                              |                                                                     |
+| 2   | 1h   | CloudTrail 구조: 모든 API 호출 기록, userIdentity·eventName·sourceIPAddress·requestParameters 필드 | [Wiz AWS Threat Hunting](https://wiz.io/academy/aws-threat-hunting) |
+| 3   | 1.5h | 실습 환경: 전용 계정에 CloudTrail 켜고 S3로 보내기, Athena 테이블 연결, 예산 알림 설정                             |                                                                     |
+| 4   | 0.5h | 엔드포인트 개념과의 대응표 작성 (아래)                                                                   |                                                                     |
 
 이미 아는 것에 붙여서 외우면 빠릅니다.
 
-|   |   |
-|---|---|
-|엔드포인트에서|클라우드에서|
-|프로세스 트리|AssumeRole 역할 체인|
-|부모 프로세스 + 파라미터|호출 주체(userIdentity) + requestParameters|
-|실행 파일 경로|eventSource + eventName|
-|로컬 계정 생성(지속성)|IAM 사용자·액세스 키 생성(지속성)|
-|로그 삭제·서비스 중지|CloudTrail 중지·삭제(StopLogging, DeleteTrail)|
+| 엔드포인트에서        | 클라우드에서                                     |
+| -------------- | ------------------------------------------ |
+| 프로세스 트리        | AssumeRole 역할 체인                           |
+| 부모 프로세스 + 파라미터 | 호출 주체(userIdentity) + requestParameters    |
+| 실행 파일 경로       | eventSource + eventName                    |
+| 로컬 계정 생성(지속성)  | IAM 사용자·액세스 키 생성(지속성)                      |
+| 로그 삭제·서비스 중지   | CloudTrail 중지·삭제(StopLogging, DeleteTrail) |
 
 ### Day 6 · 11/4 (수) flaws2 Defender 경로와 ATT&CK 매핑
 
 flaws2.cloud는 공격자 경로와 방어자 경로를 둘 다 제공하는 무료 실습입니다. Defender 경로로 CloudTrail 로그에서 공격 흔적을 직접 따라갑니다.
 
-|   |   |   |   |
-|---|---|---|---|
-|블록|시간|내용|자료|
-|1|2h|flaws2 Defender 경로 완주, 각 단계의 CloudTrail 이벤트 확인|[flaws2.cloud](http://flaws2.cloud)|
-|2|1h|공격 타임라인을 표로 정리하고 ATT&CK for Cloud 전술에 매핑|[MITRE Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)|
-|3|1h|자격증명 악용 흐름 학습: 유출 키로 권한 열거(List*/Describe* 반복), 권한 상승, 지속성 확보|[Datadog CloudTrail 헌팅](https://securitylabs.datadoghq.com/articles/following-attackers-trail-in-aws-methodology-findings-in-the-wild/)|
+| 블록  | 시간  | 내용                                                            | 자료                                                                                                                                      |
+| --- | --- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 2h  | flaws2 Defender 경로 완주, 각 단계의 CloudTrail 이벤트 확인                | [flaws2.cloud](http://flaws2.cloud)                                                                                                     |
+| 2   | 1h  | 공격 타임라인을 표로 정리하고 ATT&CK for Cloud 전술에 매핑                      | [MITRE Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)                                                               |
+| 3   | 1h  | 자격증명 악용 흐름 학습: 유출 키로 권한 열거(List*/Describe* 반복), 권한 상승, 지속성 확보 | [Datadog CloudTrail 헌팅](https://securitylabs.datadoghq.com/articles/following-attackers-trail-in-aws-methodology-findings-in-the-wild/) |
 
 ATT&CK 매핑 예시입니다. 블록 2에서 완성합니다.
 
-|   |   |   |
-|---|---|---|
-|관찰한 행위|ATT&CK 전술|기법|
-|List*/Describe* API 반복 호출|Discovery|Cloud Service Discovery (T1580)|
-|IAM 사용자·키 신규 생성|Persistence|유효 계정 생성|
-|CloudTrail 중지·삭제|Defense Evasion|Impair Defenses: Disable Cloud Logs (T1562.008)|
+| 관찰한 행위                    | ATT&CK 전술       | 기법                                              |
+| ------------------------- | --------------- | ----------------------------------------------- |
+| List*/Describe* API 반복 호출 | Discovery       | Cloud Service Discovery (T1580)                 |
+| IAM 사용자·키 신규 생성           | Persistence     | 유효 계정 생성                                        |
+| CloudTrail 중지·삭제          | Defense Evasion | Impair Defenses: Disable Cloud Logs (T1562.008) |
 
 ### Day 7 · 11/5 (목) Stratus Red Team 공격 재현과 쿼리 헌팅
 
 Stratus Red Team은 클라우드용 Atomic Red Team입니다. 전용 계정에서 공격을 실행하고 CloudTrail에 남은 흔적을 Athena로 찾아봅니다.
 
-|   |   |   |   |
-|---|---|---|---|
-|블록|시간|내용|자료|
-|1|0.5h|설치, 공격 기법 목록 확인(ATT&CK 매핑되어 있음)|[Stratus Red Team](https://github.com/DataDog/stratus-red-team)|
-|2|2h|기법 3~4개 detonate 후 헌팅: EC2 자격증명 탈취, Lambda 백도어, 스냅샷 외부 공유, IAM 역할 백도어. 끝나면 cleanup|[Datadog 탐지 검증](https://www.datadoghq.com/blog/aws-threat-emulation-detection-validation-datadog/)|
-|3|1h|찾은 흔적을 재사용 가능한 Athena 쿼리로 저장 (아래 예시 확장)||
-|4|0.5h|쿼리 모음 정리, Day 8 통합 헌트 가설 정하기||
+| 블록  | 시간   | 내용                                                                                 | 자료                                                                                                 |
+| --- | ---- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | 0.5h | 설치, 공격 기법 목록 확인(ATT&CK 매핑되어 있음)                                                    | [Stratus Red Team](https://github.com/DataDog/stratus-red-team)                                    |
+| 2   | 2h   | 기법 3~4개 detonate 후 헌팅: EC2 자격증명 탈취, Lambda 백도어, 스냅샷 외부 공유, IAM 역할 백도어. 끝나면 cleanup | [Datadog 탐지 검증](https://www.datadoghq.com/blog/aws-threat-emulation-detection-validation-datadog/) |
+| 3   | 1h   | 찾은 흔적을 재사용 가능한 Athena 쿼리로 저장 (아래 예시 확장)                                            |                                                                                                    |
+| 4   | 0.5h | 쿼리 모음 정리, Day 8 통합 헌트 가설 정하기                                                       |                                                                                                    |
 
 블록 3 시작용 쿼리입니다. Athena 과금을 막으려면 날짜 파티션 조건을 꼭 겁니다.
 
@@ -3585,13 +3579,12 @@ WHERE eventname IN ('StopLogging', 'DeleteTrail')
 
 앞의 내용을 하나로 꿰는 날입니다. 클라우드 가설 하나를 PEAK 전 과정으로 돌리고, 결과를 탐지룰로 바꿉니다. 헌팅의 가치는 조사 결과를 반복 가능한 방어로 얼마나 빨리 바꾸느냐에 있다는 게 2026년의 공통된 평가입니다.
 
-|   |   |   |
-|---|---|---|
-|블록|시간|내용|
-|1|1h|Prepare: 가설 하나 선정, ABLE로 쪼개기, 데이터 소스·기간 정하기|
-|2|1.5h|Execute: Athena 쿼리로 분석, 스택 카운팅·시간 분석 적용, 가설 확인 또는 수정|
-|3|1h|Act: 헌트 리포트 작성, 발견을 탐지룰(Sigma 또는 CloudTrail 조건)로 전환, 로그 공백 기록|
-|4|0.5h|복기: 이 헌트에서 막힌 지점, 다음에 자동화할 부분|
+| 블록  | 시간   | 내용                                                            |
+| --- | ---- | ------------------------------------------------------------- |
+| 1   | 1h   | Prepare: 가설 하나 선정, ABLE로 쪼개기, 데이터 소스·기간 정하기                   |
+| 2   | 1.5h | Execute: Athena 쿼리로 분석, 스택 카운팅·시간 분석 적용, 가설 확인 또는 수정          |
+| 3   | 1h   | Act: 헌트 리포트 작성, 발견을 탐지룰(Sigma 또는 CloudTrail 조건)로 전환, 로그 공백 기록 |
+| 4   | 0.5h | 복기: 이 헌트에서 막힌 지점, 다음에 자동화할 부분                                 |
 
 추천 가설: "공격자가 유출된 IAM 자격증명으로 권한을 열거한 뒤 새 액세스 키를 만들어 지속성을 확보한다." Day 7에서 Stratus로 재현했고, Discovery와 Persistence를 한 흐름으로 묶을 수 있어 통합 연습에 좋습니다.
 
