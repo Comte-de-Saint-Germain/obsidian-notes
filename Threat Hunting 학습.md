@@ -3076,14 +3076,20 @@ CloudTrail은 기록하는 이벤트를 두 종류로 나눠요.
 > **4. 분석 방법**
 > 
 > - 조건: CloudTrail 로그에서 다음 내용 확인
->   svc-backup 이벤트가 평소 사용하지 않는 리전(awsRegion=us-east-1)에서 p4d.24xlarge 인스턴스를 만들고, 실행한 것을 확인
->   oncall-ops 
+>   svc-backup 아이덴티티에서 발생한 이벤트가 평소 사용하지 않는 리전(awsRegion=us-east-1)에서 p4d.24xlarge 인스턴스를 만들고, 실행한 것을 확인
+>   oncall-ops 아이덴티티에서 발생한 이벤트에서 외부 사용자가 내부 네트워크에 접근한 것을 확인, 이벤트 체인을 다음 순서로 호출하는 것을 확인하여 조사
 >   
-> - 쿼리 원문 첨부
+>   GetCallerIdentity : 훔친 자격 증명이 누구 것이고 뭘 할 수 있는지 확인
+>   ListUsers : 계정 목록을 훑어 노릴 대상 물색
+>   CreateAccessKey (대상 svc-backup) : svc-backup에 **새 장기 키** 생성. 나중에 다시 들어올 문
+>   AttachUserPolicy (AdministratorAccess → svc-backup) : svc-backup에 **관리자 권한** 부여
+>   PutBucketPolicy : 저장소를 열려다 **AccessDenied로 실패**
+>   
+> - 각 확인 쿼리 원문 첨부
 > 
 > **5. 결과**
 > 
-> - 정상 4건: 배송지 변경이 없는 상태에서 주문을 했던 경우와 변경이 있었다고 해도, 고객이 이전에 쓴적 있는 주소로 바꾼 로그
+> - 정상 4건: 평소 사용 패턴과 
 > - 침해 의심 2건: 로그인 성공 후, 1시간 이내 기존에 사용하지 않던 배송지 변경과 고가의 전자기기를 주문한 로그, 바꾼 배송지 id가 같음.
 > 
 > **6. 로그 공백**
