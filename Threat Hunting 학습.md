@@ -3312,4 +3312,398 @@ Day 1에서 "모델이 뽑은 후보는 결론이 아니라 가설의 출발점,
 
 ---
 
-여기까지가 오늘의 배우는 부분이에요. 남은 건 **용어집**과 **첫 주에 팀에 물어볼 질문 리스트**인데, 이 둘은 입사해서 계속 꺼내 볼 자료라 플랜 문서에 깔끔하게 정리해 둘게요. 지금 바로 정리할까요, 아니면 트렌드 중에 더 짚고 싶은 게 있어요?
+
+# Threat Hunting 정리
+
+2026년 10월 30일 · @캐슬
+
+## 목표와 진행 원칙
+
+11/9 입사 전까지 10일 × 4시간, 총 40시간입니다. 가장 큰 비중(12시간)은 클라우드·아이덴티티 헌팅에 둡니다. 레벨 조정 사유였던 갭이면서 JD의 대규모 로그 헌팅과 직접 연결되는 영역이기 때문입니다.
+
+**11/8 기준 목표 상태**
+
+- 헌팅 가설 하나를 ABLE로 쓰고 PEAK 세 단계(Prepare, Execute, Act)로 끝까지 돌려본 경험 1회
+- CloudTrail 로그에서 자격증명 악용, 지속성, 방어 회피 흔적을 직접 쿼리로 찾을 수 있음
+- 스택 카운팅과 베이스라인 비교 같은 통계 기법을 Jupyter로 재현할 수 있음
+- 팀 대화에 나오는 용어(CTEM, dwell time, TTP, IOA 등)를 바로 따라갈 수 있음
+
+**시간 배분**
+
+|   |   |   |
+|---|---|---|
+|영역|날짜|시간|
+|헌팅 방법론 (PEAK)|Day 1–2|8h|
+|통계·베이스라인 헌팅 실습|Day 3–4|8h|
+|클라우드·아이덴티티 헌팅|Day 5–7|12h|
+|통합 헌트와 탐지 전환|Day 8|4h|
+|트렌드·CTI 연계·용어|Day 9|4h|
+|정리와 첫 주 준비|Day 10|4h|
+
+**진행 원칙**
+
+- 하루 흐름은 개념 1시간, 실습 2시간, 정리 1시간을 기본으로 합니다.
+- 그날 산출물(문서, 노트북, 쿼리 파일)이 남아야 완료로 칩니다.
+- 매일 마지막 15분은 배운 것을 내 말로 세 줄 쓰고 다음 날 할 일을 적습니다.
+- 일정이 밀리면 Day 9 시간을 줄여서 메꿉니다. 클라우드 실습(Day 5–7)은 줄이지 않습니다.
+
+**AWS 실습 비용·안전 주의**
+
+- 실습 전용 계정이나 리전을 쓰고, AWS Budgets 예산 알림부터 설정합니다.
+- Stratus Red Team은 실제 리소스를 만들고 공격을 실행합니다. 기법마다 cleanup을 실행하고, 다른 용도의 계정에서는 절대 돌리지 않습니다.
+- Athena는 스캔한 데이터 양으로 과금되므로 쿼리마다 날짜 조건을 겁니다.
+- 실습용 IAM 액세스 키는 끝나면 바로 삭제합니다.
+
+## 일정 한눈에 보기 (11/4 조정)
+
+11/4 기준으로 남은 일정을 5일로 줄였습니다. AWS 실습 환경 직접 구축(CloudTrail, Athena, Stratus Red Team)은 입사 후로 미루고, 대신 CloudTrail 형식의 합성 로그로 실습합니다. 예전 업무를 재구성하는 과제는 일반 예시 실습으로 바꿨고, 11/5부터는 로그 없이 가설을 세운 뒤 샘플 로그로 다듬는 2단계 방식으로 진행합니다. 아래 Day별 세부 블록은 원래 10일 계획입니다.
+
+|   |   |   |
+|---|---|---|
+|날짜|주제|원래 계획|
+|10/30 (금)|헌팅 기초: 탐지와의 차이, PEAK, 가설과 ABLE, 베이스라인·모델 보조 헌팅 (완료)|Day 1|
+|11/4 (수)|가설의 재료와 우선순위, ABLE 실습, 헌트 리포트, 미니 헌트 (완료)|Day 2|
+|11/5 (목)|통계 기법(스택 카운팅, 시간·양 비교) 합성 로그 실습|Day 3–4|
+|11/6 (금)|AWS 아이덴티티 개념, CloudTrail 로그 읽는 법|Day 5–6|
+|11/7 (토)|클라우드 헌팅 CTF, 탐지룰로 바꾸기|Day 7–8|
+|11/8 (일)|용어, 트렌드, 첫 주 질문 리스트 (가볍게)|Day 9–10|
+
+## Day 1–2 헌팅 방법론 (PEAK)
+
+이틀 동안 헌팅의 공통 언어를 잡고, 이미 해본 경험을 그 언어로 다시 씁니다. PEAK는 Prepare, Execute, and Act with Knowledge의 약자이고 가설 기반, 베이스라인, 모델 보조(M-ATH) 세 유형을 하나의 흐름으로 묶은 프레임워크입니다.
+
+### Day 1 · 10/30 (금) PEAK 구조
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|1h|PEAK 소개: 기존 프레임워크(Sqrrl, TaHiTI)와의 차이, 세 가지 헌팅 유형|[Introducing PEAK](https://www.splunk.com/en_us/blog/security/peak-threat-hunting-framework.html)|
+|2|1h|가설 기반 헌팅: 주제 선정, 테스트 가능한 가설로 다듬기, ABLE|[Hypothesis-Driven Hunting](https://www.splunk.com/en_us/blog/security/peak-hypothesis-driven-threat-hunting.html)|
+|3|1h|베이스라인 헌팅과 M-ATH: 언제 쓰는지, 데이터 유형 구분, 스택 카운팅 첫 소개|[Baseline Hunting](https://www.splunk.com/en_us/blog/security/peak-baseline-hunting)|
+|4|1h|PEAK 한 장 요약 노트 작성|아래 틀|
+
+요약 노트에 채울 틀입니다.
+
+- Prepare: 주제 선정, 리서치, 가설 작성, 범위 정하기(ABLE)
+- Execute: 데이터 수집, 전처리, 분석, 가설 수정 또는 에스컬레이션
+- Act: 헌트 기록 보존, 결과 문서화, 탐지룰 생성, 결과 공유
+
+셀프 체크 질문
+
+- 가설 기반 헌팅과 베이스라인 헌팅은 각각 어떤 상황에서 먼저 쓰는가?
+- 아무것도 못 찾은 헌트에서도 남는 산출물은 무엇인가? (예: 로그 공백 발견, 탐지 가능 여부 확인)
+- 헌팅, 침해사고 대응, CTI는 같은 데이터를 쓰지만 목적이 어떻게 다른가?
+
+### Day 2 · 10/31 (토) ABLE 가설과 내 경험 재구성
+
+|   |   |   |
+|---|---|---|
+|블록|시간|내용|
+|1|1h|ABLE 연습: 이커머스 가설 3개 쪼개기 (유출 자격증명으로 콘솔 로그인, 정상 관리 도구로 내부 확산, 계정 탈취 후 결제·배송 정보 변경)|
+|2|1.5h|아이언메이스 치트 헌트를 PEAK 헌트 리포트로 재작성|
+|3|1h|안랩 텔레메트리 사각지대 분석(ATT&CK 커버리지 40%에서 80%)을 PEAK Act 단계 관점으로 정리|
+|4|0.5h|정리, 다음 날 준비|
+
+아이언메이스 사례 ABLE 예시입니다. 블록 2에서 이 뼈대에 실제 쿼리와 수치를 채웁니다.
+
+|   |   |
+|---|---|
+|ABLE|내용|
+|Actor|무기 사거리·거리 좁히기 치트를 쓰는 유저|
+|Behavior|게임 규칙상 불가능한 공격 거리나 이동|
+|Location|같은 하드웨어에 과거 치트 이력이 있는 계정의 최근 게임|
+|Evidence|Kibana 하드웨어 이력, 게임 ID별 서버 로그(혼합 모듈 로그를 Python 툴로 정제)|
+
+헌트 리포트 양식 (Day 8에도 그대로 씁니다)
+
+1. 가설과 ABLE
+2. 데이터 소스와 기간
+3. 사용한 쿼리 또는 분석 방법
+4. 결과: 발견 내용, 또는 미발견과 그 근거
+5. 발견한 로그 공백
+6. 탐지룰 전환 여부와 룰 초안
+7. 다음 헌트 아이디어
+
+아이언메이스 리포트를 쓰면서 스스로 답해볼 질문: 약 200명 차단 이후 이 패턴을 상시 탐지로 바꿨는가, 아니면 다시 손으로 돌려야 하는가? 이 질문의 답이 PEAK Act 단계의 핵심입니다.
+
+**Day 1–2 산출물**
+
+- PEAK 한 장 요약 노트
+- ABLE로 쪼갠 이커머스 가설 3개
+- 아이언메이스 헌트 리포트 1~2쪽
+- 안랩 사례 PEAK 매핑 메모
+
+## Day 3–4 통계·베이스라인 헌팅 실습
+
+JD의 "행위 기반 기준선, 통계적 방법론"을 손으로 재현하는 이틀입니다. 데이터는 익숙한 Windows 엔드포인트 로그로 해서, 새로 배우는 건 기법에만 집중합니다.
+
+### Day 3 · 11/1 (일) 통계 기법과 환경 구축
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|1h|기법 학습: 스택 카운팅(단일·다중 속성), 베이스라인 편차, 시간 분석(업무 외 시간, 버스트), 비코닝(호출 간격 규칙성), 클러스터링 개념|[Expel 헌팅 기법](https://expel.com/cyberspeak/what-are-threat-hunting-techniques/), [PEAK Baseline](https://www.splunk.com/en_us/blog/security/peak-baseline-hunting)|
+|2|1h|환경 구축: Python, JupyterLab, pandas 설치, Security Datasets에서 Windows 데이터셋 3~4개 받기|[Security Datasets](https://github.com/OTRF/Security-Datasets)|
+|3|1.5h|첫 실습: 데이터셋을 DataFrame으로 불러와 필드 구조 파악, EventID와 실행 파일 경로 스택 카운팅|아래 코드|
+|4|0.5h|기법 정리 노트 작성 (기법별 언제 쓰는지, 어떻게, 한계)||
+
+블록 3 시작용 코드입니다. 필드명은 데이터셋마다 다르니 `df.columns`부터 확인합니다.
+
+```python
+import pandas as pd
+
+df = pd.read_json("dataset.json", lines=True)
+print(df.columns)
+
+# 단일 속성 스택: 드물게 나온 값이 위로
+df["EventID"].value_counts(ascending=True).head(20)
+
+# 다중 속성 스택: Sysmon 프로세스 생성(EventID 1)의 부모-자식 조합
+(df[df["EventID"] == 1]
+   .groupby(["ParentImage", "Image"]).size()
+   .sort_values().head(20))
+
+# 시간 분석: 분 단위 이벤트 수로 버스트 찾기
+df["ts"] = pd.to_datetime(df["@timestamp"])
+df.set_index("ts").resample("1min").size().sort_values(ascending=False).head(10)
+```
+
+셀프 체크 질문
+
+- 스택 카운팅이 대규모 환경에서 강하고 소규모 환경에서 약한 이유는?
+- 단일 속성 대신 다중 속성으로 스택하면 추가로 잡히는 것은? (정상 이름 + 비정상 경로)
+- 비코닝을 볼 때 평균 간격보다 간격의 분산이 중요한 이유는?
+
+### Day 4 · 11/2 (월) 헌트를 실행 가능한 문서로
+
+Threat Hunter Playbook은 헌트를 Jupyter 노트북 하나에 가설, 데이터, 쿼리, 검증까지 담는 방식입니다. Microsoft GHOST가 요구하는 Jupyter 기반 헌팅 자동화와 같은 결입니다.
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|1.5h|Playbook 노트북 2개를 따라 실행하며 문서 구조 분석 (가설, 데이터, 분석, 검증 쿼리)|[Threat Hunter Playbook](https://github.com/OTRF/ThreatHunter-Playbook)|
+|2|1.5h|내 노트북 작성: "부모-자식 프로세스 조합 스택 카운팅으로 비정상 실행 찾기" (ABLE, 데이터, 쿼리, 결과, 탐지룰 아이디어)|Day 3 데이터셋|
+|3|0.5h|같은 분석을 SQL `GROUP BY ... ORDER BY count ASC`로 다시 쓰기 (Day 5 Athena 대비)||
+|4|0.5h|정리, Day 5 AWS 준비물 확인||
+
+데이터셋을 쉽게 불러오고 싶으면 MSTICPy의 Mordor 데이터 브라우저를 써도 됩니다(선택).
+
+**Day 3–4 산출물**
+
+- 통계 기법 정리 노트
+- Jupyter 실습 환경과 데이터셋
+- 내 헌트 노트북 1개
+- 같은 분석의 SQL 버전
+
+## Day 5–7 클라우드·아이덴티티 헌팅
+
+가장 많은 시간을 쓰는 블록입니다. 레벨 조정 사유였고, 면접관이 "SIEM 작업 많이 할 것"이라고 한 영역입니다. 핵심 감각 하나: 클라우드에서 공격자는 호스트가 아니라 역할·토큰·연합 세션을 타고 움직이고, 아이덴티티가 곧 보안 경계입니다.
+
+### Day 5 · 11/3 (화) 아이덴티티 개념과 CloudTrail·Athena 구축
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|1h|AWS 아이덴티티: IAM 사용자·역할·정책, STS AssumeRole 체인, 임시 자격증명, 연합 세션||
+|2|1h|CloudTrail 구조: 모든 API 호출 기록, userIdentity·eventName·sourceIPAddress·requestParameters 필드|[Wiz AWS Threat Hunting](https://wiz.io/academy/aws-threat-hunting)|
+|3|1.5h|실습 환경: 전용 계정에 CloudTrail 켜고 S3로 보내기, Athena 테이블 연결, 예산 알림 설정||
+|4|0.5h|엔드포인트 개념과의 대응표 작성 (아래)||
+
+이미 아는 것에 붙여서 외우면 빠릅니다.
+
+|   |   |
+|---|---|
+|엔드포인트에서|클라우드에서|
+|프로세스 트리|AssumeRole 역할 체인|
+|부모 프로세스 + 파라미터|호출 주체(userIdentity) + requestParameters|
+|실행 파일 경로|eventSource + eventName|
+|로컬 계정 생성(지속성)|IAM 사용자·액세스 키 생성(지속성)|
+|로그 삭제·서비스 중지|CloudTrail 중지·삭제(StopLogging, DeleteTrail)|
+
+### Day 6 · 11/4 (수) flaws2 Defender 경로와 ATT&CK 매핑
+
+flaws2.cloud는 공격자 경로와 방어자 경로를 둘 다 제공하는 무료 실습입니다. Defender 경로로 CloudTrail 로그에서 공격 흔적을 직접 따라갑니다.
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|2h|flaws2 Defender 경로 완주, 각 단계의 CloudTrail 이벤트 확인|[flaws2.cloud](http://flaws2.cloud)|
+|2|1h|공격 타임라인을 표로 정리하고 ATT&CK for Cloud 전술에 매핑|[MITRE Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)|
+|3|1h|자격증명 악용 흐름 학습: 유출 키로 권한 열거(List*/Describe* 반복), 권한 상승, 지속성 확보|[Datadog CloudTrail 헌팅](https://securitylabs.datadoghq.com/articles/following-attackers-trail-in-aws-methodology-findings-in-the-wild/)|
+
+ATT&CK 매핑 예시입니다. 블록 2에서 완성합니다.
+
+|   |   |   |
+|---|---|---|
+|관찰한 행위|ATT&CK 전술|기법|
+|List*/Describe* API 반복 호출|Discovery|Cloud Service Discovery (T1580)|
+|IAM 사용자·키 신규 생성|Persistence|유효 계정 생성|
+|CloudTrail 중지·삭제|Defense Evasion|Impair Defenses: Disable Cloud Logs (T1562.008)|
+
+### Day 7 · 11/5 (목) Stratus Red Team 공격 재현과 쿼리 헌팅
+
+Stratus Red Team은 클라우드용 Atomic Red Team입니다. 전용 계정에서 공격을 실행하고 CloudTrail에 남은 흔적을 Athena로 찾아봅니다.
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|0.5h|설치, 공격 기법 목록 확인(ATT&CK 매핑되어 있음)|[Stratus Red Team](https://github.com/DataDog/stratus-red-team)|
+|2|2h|기법 3~4개 detonate 후 헌팅: EC2 자격증명 탈취, Lambda 백도어, 스냅샷 외부 공유, IAM 역할 백도어. 끝나면 cleanup|[Datadog 탐지 검증](https://www.datadoghq.com/blog/aws-threat-emulation-detection-validation-datadog/)|
+|3|1h|찾은 흔적을 재사용 가능한 Athena 쿼리로 저장 (아래 예시 확장)||
+|4|0.5h|쿼리 모음 정리, Day 8 통합 헌트 가설 정하기||
+
+블록 3 시작용 쿼리입니다. Athena 과금을 막으려면 날짜 파티션 조건을 꼭 겁니다.
+
+```sql
+-- 루트 계정 콘솔 로그인 (정당한 사유 없으면 중대 발견)
+SELECT eventtime, sourceipaddress
+FROM cloudtrail_logs
+WHERE eventname = 'ConsoleLogin'
+  AND useridentity.type = 'Root'
+  AND year = '2026' AND month = '11';
+
+-- 교차 계정 AssumeRole (외부 계정이 내 역할을 맡음)
+SELECT eventtime, useridentity.arn, sourceipaddress
+FROM cloudtrail_logs
+WHERE eventname = 'AssumeRole'
+  AND useridentity.accountid <> recipientaccountid
+  AND year = '2026' AND month = '11';
+
+-- CloudTrail 중지·삭제 (방어 회피)
+SELECT eventtime, eventname, useridentity.arn
+FROM cloudtrail_logs
+WHERE eventname IN ('StopLogging', 'DeleteTrail')
+  AND year = '2026' AND month = '11';
+```
+
+**Day 5–7 산출물**
+
+- 동작하는 CloudTrail + Athena 실습 환경
+- 엔드포인트-클라우드 대응표
+- flaws2 공격 타임라인 + ATT&CK 매핑표
+- 재사용 가능한 헌팅 쿼리 5개 이상
+
+## Day 8 · 11/6 (금) 통합 헌트와 탐지 전환
+
+앞의 내용을 하나로 꿰는 날입니다. 클라우드 가설 하나를 PEAK 전 과정으로 돌리고, 결과를 탐지룰로 바꿉니다. 헌팅의 가치는 조사 결과를 반복 가능한 방어로 얼마나 빨리 바꾸느냐에 있다는 게 2026년의 공통된 평가입니다.
+
+|   |   |   |
+|---|---|---|
+|블록|시간|내용|
+|1|1h|Prepare: 가설 하나 선정, ABLE로 쪼개기, 데이터 소스·기간 정하기|
+|2|1.5h|Execute: Athena 쿼리로 분석, 스택 카운팅·시간 분석 적용, 가설 확인 또는 수정|
+|3|1h|Act: 헌트 리포트 작성, 발견을 탐지룰(Sigma 또는 CloudTrail 조건)로 전환, 로그 공백 기록|
+|4|0.5h|복기: 이 헌트에서 막힌 지점, 다음에 자동화할 부분|
+
+추천 가설: "공격자가 유출된 IAM 자격증명으로 권한을 열거한 뒤 새 액세스 키를 만들어 지속성을 확보한다." Day 7에서 Stratus로 재현했고, Discovery와 Persistence를 한 흐름으로 묶을 수 있어 통합 연습에 좋습니다.
+
+면접 때 약했던 지점과 연결하기: Jenkins SHA-256 기준값 조작 질문에서 면접관이 "중앙 CI 파이프라인 필수 검증"을 짚었습니다. 탐지가 우회될 수 있다면 어디서 교차 검증할지를 늘 함께 생각하는 습관이, 이 Act 단계(헌트를 중앙에서 반복 가능한 탐지로 올리는 일)와 같은 사고방식입니다. 리포트 끝에 "이 탐지는 어디서 우회될 수 있고, 어디서 교차 검증하나"를 한 줄 적어봅니다.
+
+**Day 8 산출물**
+
+- 클라우드 가설 1건의 완결된 헌트 리포트
+- 탐지룰 초안 1개
+- 발견한 로그 공백 목록
+
+## Day 9 · 11/7 (토) 트렌드·CTI 연계·용어집
+
+기술 실습에서 한 발 물러나 업계 맥락과 쿠팡 맥락을 정리하는 날입니다. 입사 후 팀 대화와 역질문 소재로 바로 쓰입니다.
+
+|   |   |   |   |
+|---|---|---|---|
+|블록|시간|내용|자료|
+|1|1h|2026 트렌드: AI 에이전트 헌팅(코파일럿 대 에이전틱), 헌터 역할 변화(검색하는 사람에서 가설 세우고 AI 지휘하는 사람으로)|[Cyber Insights 2026](https://geekchamp.com/cyber-insights-2026-threat-hunting-in-an-age-of-automation-and-ai/), [AI 헌팅 도구 비교](https://d3security.com/compare/ai-threat-hunting-tools/)|
+|2|1h|TaHiTI(인텔리전스 주도 헌팅)와 PEAK 비교, 헌팅·탐지·대응 경계가 좁아지는 흐름|[N-able 프레임워크](https://www.n-able.com/blog/threat-hunting-framework)|
+|3|1h|쿠팡 맥락 복습: GHOST 조직 구조, CTI와의 협업, dwell time 최소화 목표. 역질문 2~3개 준비|이전 대화 정리|
+|4|1h|용어집 작성 (아래 목록) + SANS 2026 서베이 소개 훑기|[SANS 2026 Survey](https://www.sans.org/white-papers/sans-2026-threat-hunting-survey-evolution-threat-hunting)|
+
+입사 첫 주에 바로 나올 용어입니다. 각각 한 줄로 내 말로 정리합니다.
+
+|   |   |
+|---|---|
+|용어|한 줄 정리 방향|
+|CTEM|지속적 위협 노출 관리. 보안 가시성을 상시 측정·검증·개선|
+|dwell time|공격자가 탐지 전까지 내부에 머문 시간. 줄이는 게 목표|
+|TTP|공격자의 전술·기법·절차|
+|IOC / IOA|침해 지표(흔적) / 공격 행위 지표|
+|LOTL|정상 도구를 악용하는 공격(Living off the Land)|
+|스택 카운팅|값 빈도를 세어 드문 것을 outlier로 찾기|
+|M-ATH|모델(ML) 보조 헌팅|
+|Crown Jewel 분석|핵심 자산 중심으로 헌팅 범위 좁히기|
+
+SANS 서베이는 본문 PDF가 로그인 후 받는 자료라, 소개 수준(악성코드 없는 침투, 자격증명 악용, 내부 확산, 멀티 클라우드 헌팅 고충)만 훑고 넘어갑니다. 받아서 읽고 싶으면 저에게 첨부해 주시면 핵심을 요약해 드립니다.
+
+**Day 9 산출물**
+
+- 트렌드 한 장 요약
+- 용어집
+- 역질문 2~3개
+
+## Day 10 · 11/8 (일) 정리와 첫 주 준비
+
+가볍게 마무리하고 쉬는 날입니다. 입사일 전날이니 4시간을 꽉 채우기보다 복기와 컨디션 관리에 둡니다.
+
+|   |   |   |
+|---|---|---|
+|블록|시간|내용|
+|1|1h|10일 산출물 한곳에 모으기 (노트북, 쿼리, 리포트, 용어집)|
+|2|1h|전체 복기: PEAK 흐름을 보지 않고 설명, 약했던 부분만 다시 보기|
+|3|1h|첫 주 질문 리스트 작성 (아래)|
+|4|1h|예비 또는 휴식|
+
+입사 첫 주에 팀에 물어볼 질문 틀입니다. 내부에 들어가야 아는 것들이라, 미리 적어두면 빠르게 적응합니다.
+
+- 우리 SIEM은 무엇이고 쿼리 언어는 무엇인가? 로그 스키마 문서는 어디에 있나?
+- 수집되는 주요 데이터 소스는? (엔드포인트, 클라우드, 아이덴티티, 네트워크)
+- 기존 헌트 기록과 탐지룰은 어디서 보나? 헌트 리포트 양식이 있나?
+- GHOST와 DART의 업무 경계는 실제로 어떻게 나뉘나?
+- 헌팅 자동화는 어디까지 되어 있나? (Jupyter, 에이전트 등)
+- 내가 가장 먼저 성과를 낼 수 있는 영역은 어디라고 보나?
+
+첫 출근 때 가져갈 한 문장: "탐지를 설계해온 사람이 사각지대를 가장 잘 안다. 엔드포인트 헌팅에서 먼저 성과를 내고 클라우드로 점진적으로 넓히겠다."
+
+**Day 10 산출물**
+
+- 산출물 모음 폴더
+- 첫 주 질문 리스트
+
+## 자료 모음
+
+방법론
+
+- [Splunk — Introducing the PEAK Framework](https://www.splunk.com/en_us/blog/security/peak-threat-hunting-framework.html)
+- [Splunk — Hypothesis-Driven Hunting with PEAK](https://www.splunk.com/en_us/blog/security/peak-hypothesis-driven-threat-hunting.html)
+- [Splunk — Baseline Hunting with PEAK](https://www.splunk.com/en_us/blog/security/peak-baseline-hunting)
+- [Expel — 헌팅 기법 정리](https://expel.com/cyberspeak/what-are-threat-hunting-techniques/)
+- [N-able — Threat Hunting Framework (PEAK·TaHiTI·Sqrrl)](https://www.n-able.com/blog/threat-hunting-framework)
+
+실습 도구·데이터
+
+- [OTRF — Threat Hunter Playbook](https://github.com/OTRF/ThreatHunter-Playbook)
+- [OTRF — Security Datasets](https://github.com/OTRF/Security-Datasets)
+- [DataDog — Stratus Red Team](https://github.com/DataDog/stratus-red-team)
+- [flaws2.cloud (Defender 경로)](http://flaws2.cloud)
+
+클라우드 헌팅
+
+- [Wiz — AWS Threat Hunting Best Practices](https://wiz.io/academy/aws-threat-hunting)
+- [Datadog — Following Attackers' Trail in AWS](https://securitylabs.datadoghq.com/articles/following-attackers-trail-in-aws-methodology-findings-in-the-wild/)
+- [Datadog — AWS 위협 재현·탐지 검증](https://www.datadoghq.com/blog/aws-threat-emulation-detection-validation-datadog/)
+- [MITRE ATT&CK Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)
+
+트렌드·쿠팡 맥락
+
+- [Cyber Insights 2026 — Threat Hunting in an Age of AI](https://geekchamp.com/cyber-insights-2026-threat-hunting-in-an-age-of-automation-and-ai/)
+- [D3 Security — AI 헌팅 도구 비교 (2026)](https://d3security.com/compare/ai-threat-hunting-tools/)
+- [SANS 2026 Threat Hunting Survey](https://www.sans.org/white-papers/sans-2026-threat-hunting-survey-evolution-threat-hunting)
+- [Forrester — Inside an E-Commerce Giant's Threat Intelligence Strategy](https://www.forrester.com/blogs/inside-an-e-commerce-giants-threat-intelligence-strategy/)
+
+## 핵심 원칙 3가지 (입사 후에도 꺼내 볼 것)
+
+5일 내내 반복된 것이에요. 이 세 가지만 몸에 배어도 충분해요.
+
+1. 인과를 말하기 전에 시간부터 맞춘다. 시간대 통일·중복 제거 전에는 순서를 단정하지 않는다.
+2. 고정값보다 대상별 평소 모습(베이스라인)과 비교한다. `≠KR`, "5배" 같은 고정 기준은 오탐·미탐을 만든다.
+3. 값(IP·해시)보다 행동(TTP)으로 본다. 공격자가 못 바꾸는 건 행동이고, 탐지룰도 행동으로 짜야 오래간다.
+
+보너스: 리포트 제출 전, 회사명·사번·다음 헌트 내용이 이 사건 것이 맞는지 마지막에 대조한다.
