@@ -51,3 +51,7 @@ Project
 User
 
 공공데이터에 솔루션 뭐 쓴느지 궁금
+
+
+
+claude mcp add --scope user --transport http seoul https://seoul-workshop-gateway-ttx8d3jawk.gateway.bedrock-agentcore.ap-northeast-2.amazonaws.com/mcp --header "Authorization: Bearer seoul-DA3N-G563"
