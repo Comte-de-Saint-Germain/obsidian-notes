@@ -30,5 +30,9 @@ Setting.json을 노리는 공격은 어떻게 하나?
 서명을 타서 문제가 없나??
 
 
-Access_Key 
+AWS Configure
+Access_Key를 사용하여 외부에서 사용
+기본 SSO 로그인을 사용
+콘솔 자격 증명
+Bedrock API 키
 
