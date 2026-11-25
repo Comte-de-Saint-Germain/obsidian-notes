@@ -28,6 +28,7 @@ IAM, 키 대신 SSO, 모델 고정
 Setting.json을 노리는 공격은 어떻게 하나?
 일부로 변경하는 경우는 없는건가?
 서명을 타서 문제가 없나??
+수정 못함...
 
 
 AWS Configure
@@ -36,3 +37,17 @@ Access_Key를 사용하여 외부에서 사용
 콘솔 자격 증명
 Bedrock API 키
 
+
+MDM 배포 도구 (JAMF)
+
+Deny 설정부터 걸러진다?
+
+
+아래 순서로 정책 우선순위
+Managed
+CLI 인자
+Local
+Project
+
+
+User
